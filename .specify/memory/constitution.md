@@ -1,55 +1,61 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+Sync Impact Report:
+- Version change: [INITIAL] → 1.0.0
+- List of modified principles: Populated from Hackathon requirements
+- Added sections: Core Deliverables, Bonus Points, Phase-specific Constraints
+- Removed sections: N/A
+- Templates requiring updates:
+  - .specify/templates/plan-template.md (✅ updated)
+  - .specify/templates/spec-template.md (✅ updated)
+  - .specify/templates/tasks-template.md (✅ updated)
+- Follow-up TODOs: Initial ratification date unknown, set to current year.
+-->
+
+# Evolution of Todo Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Helpful and Innovative
+Deliver a progressive Todo app that evolves from console to distributed AI system, demonstrating AI-native principles. Structure for iterative development, with hands-on examples. Integrate reusable intelligence for smart features like task prioritization.
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+### II. Honest and Accurate
+Base all features on hackathon requirements—no inventing specs or technologies. Cite sources (e.g., Spec-Kit Plus docs, MCP SDK guides). Warn on limitations (e.g., free-tier constraints for Kafka/Neon). Use exact phase deliverables and timelines (e.g., Phase I due Dec 7, 2025).
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### III. Harmless and Inclusive
+Ensure app accessibility (e.g., multi-language Urdu, voice commands). Promote ethical AI (e.g., unbiased task suggestions). Use free/open-source tiers to minimize barriers.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### IV. Spec-Driven and AI-Native (Spec-Kit Plus Integration)
+Begin every phase with Spec-Kit Plus CLI (/sp.specify for user stories, /sp.plan for architecture, /sp.tasks for breakdown, /sp.implement for execution). Generate YAML/JSON specs for features (e.g., Todo CRUD, MCP tools). Leverage Claude Code subagents and skills.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### V. Structured and Comprehensive
+Output a monorepo blueprint: hackathon-todo/ with /phase-i/ to /phase-v/, /specs/, frontend/, and backend/. Include Docusaurus docs, FastAPI backend, Next.js frontend, Neon DB, and MCP agents. Ensure assessments for natural language task management.
 
-### [PRINCIPLE_6_NAME]
+### VI. Efficient and Scalable
+Keep code modular (e.g., stateless MCP tools). Use free tiers (Neon starter, Redpanda Cloud free, DigitalOcean $200 credit). Optimize for deployment via GitHub Actions CI/CD and Helm charts.
 
+### VII. Practical yet Advanced
+Infuse AI-native elements like agents for recurring tasks/reminders. Maximize bonus points by integrating subagents/skills for intelligence, cloud-native blueprints via skills, Urdu support, and voice commands.
 
-[PRINCIPLE__DESCRIPTION]
+## Core Deliverables
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+- **Phase I**: In-memory Python console app (UV, Python 3.13+; basic CRUD: Add/Delete/Update/View/Mark Complete).
+- **Phase II**: Full-stack web app (Next.js 16+, FastAPI, SQLModel, Neon DB, Better-Auth with JWT; REST endpoints with user_id filtering).
+- **Phase III**: AI chatbot (OpenAI ChatKit UI, Agents SDK, MCP SDK tools; natural language CRUD, stateless with DB history).
+- **Phase IV**: Local K8s deploy (Docker, Minikube, Helm charts, kubectl-ai/kagent for ops).
+- **Phase V**: Cloud deploy (DigitalOcean DOKS, Dapr for pub/sub/state/jobs, Kafka/Redpanda; CI/CD with GitHub Actions).
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+## Development Workflow
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
-
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+1. **Clarify and Plan First**: Keep business understanding separate from technical planning. Architecture must be carefully designed before implementation.
+2. **Authoritative Source Mandate**: Prioritize MCP tools and CLI commands for information gathering. Never assume solutions from internal knowledge.
+3. **Knowledge Capture**: Record every user input verbatim in a Prompt History Record (PHR) after every significant exchange.
+4. **Smallest Viable Diff**: Prefer the smallest changes; do not refactor unrelated code.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+- This constitution supersedes all other practices within the "Evolution of Todo" project.
+- Amendments require a version bump (MAJOR.MINOR.PATCH) and a documentation of reasoning.
+- All PRs and tasks must be evaluated against these principles. Misalignment requires immediate revision.
+- Use CLAUDE.md for project-specific rules and runtime guidance.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Version**: 1.0.0 | **Ratified**: 2025-12-31 | **Last Amended**: 2025-12-31
