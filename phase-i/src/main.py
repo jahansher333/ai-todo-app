@@ -215,6 +215,67 @@ def search_tasks(query):
     results = [t for t in tasks if query in t['title'].upper() or query in t['tag'].upper() or query in t['description'].upper()]
     view_tasks(results, query)
 
+def filter_tasks(criteria, value):
+    """Filter tasks by status or priority"""
+    criteria = criteria.lower()
+    value = value.upper()
+
+    if criteria == "status":
+        if value == "PENDING" or value == "DONE":
+            is_completed = (value == "DONE")
+            results = [t for t in tasks if t['completed'] == is_completed]
+            view_tasks(results, f"status: {value.lower()}")
+        else:
+            print_error("Invalid status. Use: pending or done")
+    elif criteria == "priority" or criteria == "pri":
+        if value in PRIORITIES:
+            results = [t for t in tasks if t['priority'] == value]
+            view_tasks(results, f"priority: {value.lower()}")
+        else:
+            print_error("Invalid priority. Use: high, medium, or low")
+    else:
+        print_error("Invalid filter. Use: status <pending|done> or priority <high|medium|low>")
+
+def update_task(task_id, **kwargs):
+    """Update task properties"""
+    for task in tasks:
+        if task['id'] == task_id:
+            updated = False
+
+            if 'title' in kwargs and kwargs['title']:
+                task['title'] = kwargs['title']
+                updated = True
+
+            if 'description' in kwargs and kwargs['description']:
+                task['description'] = kwargs['description']
+                updated = True
+
+            if 'priority' in kwargs and kwargs['priority']:
+                prio = kwargs['priority'].upper()
+                if prio in PRIORITIES:
+                    task['priority'] = prio
+                    updated = True
+
+            if 'tag' in kwargs and kwargs['tag']:
+                task['tag'] = kwargs['tag'].upper()
+                updated = True
+
+            if 'due' in kwargs and kwargs['due']:
+                due_date = parse_date(kwargs['due'])
+                if due_date != "INVALID":
+                    task['due_date'] = due_date
+                    updated = True
+                else:
+                    print_error(f"Invalid date format: {kwargs['due']}")
+
+            if updated:
+                print_success(f"Task {task_id} updated.")
+            else:
+                print_warning("No fields were updated.")
+            return
+
+    print_error(f"Task ID {task_id} not found.")
+
 def sort_tasks(criterion):
     global tasks
     criterion = criterion.lower()
@@ -236,15 +297,17 @@ def show_help():
     commands = [
         ("add <t> [d] [p] [tag] [due]", "Add a task (p: high/med/low)"),
         ("list", "View all tasks"),
+        ("filter <crit> <val>", "Filter: status <pending|done> or pri <h|m|l>"),
+        ("search <q>", "Search in titles, tags, descriptions"),
+        ("sort <crit>", "Sort by: due, priority, title"),
+        ("update <id> <field> <val>", "Update: title, desc, prio, tag, due"),
         ("complete <id>", "Toggle status (triggers recurring)"),
         ("delete <id>", "Remove a task"),
-        ("search <q>", "Search in titles and tags"),
-        ("sort <crit>", "Sort by: due, priority, title"),
         ("clear", "Clear screen"),
         ("quit", "Exit application")
     ]
     for cmd, desc in commands:
-        print(f"  {COLOR_CYAN}{cmd:<25}{COLOR_RESET} {COLOR_DIM}{SYM_BULLET} {desc}{COLOR_RESET}")
+        print(f"  {COLOR_CYAN}{cmd:<30}{COLOR_RESET} {COLOR_DIM}{SYM_BULLET} {desc}{COLOR_RESET}")
     print("  " + f"{COLOR_DIM}{SYM_LINE * 40}{COLOR_RESET}\n")
 
 # --- Main Interface ---
@@ -298,6 +361,28 @@ def main():
             elif cmd == "sort":
                 if len(parts) > 1: sort_tasks(parts[1])
                 else: print_error("Usage: sort [due|priority|title]")
+            elif cmd == "filter":
+                if len(parts) > 2: filter_tasks(parts[1], parts[2])
+                else: print_error("Usage: filter <status|pri> <value>")
+            elif cmd == "update":
+                if len(parts) > 2:
+                    task_id = int(parts[1])
+                    field = parts[2].lower()
+                    value = ' '.join(parts[3:]) if len(parts) > 3 else None
+                    if field == "title":
+                        update_task(task_id, title=value)
+                    elif field == "desc" or field == "description":
+                        update_task(task_id, description=value)
+                    elif field == "prio" or field == "priority":
+                        update_task(task_id, priority=value)
+                    elif field == "tag":
+                        update_task(task_id, tag=value)
+                    elif field == "due":
+                        update_task(task_id, due=value)
+                    else:
+                        print_error("Unknown field. Use: title, desc, prio, tag, due")
+                else:
+                    print_error("Usage: update <id> <field> <value>")
             elif cmd == "clear":
                 clear_console()
                 print_banner()
