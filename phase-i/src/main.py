@@ -153,7 +153,8 @@ def view_tasks(task_list=None, query_info=None):
 
 def add_task(title, description="", priority="MEDIUM", tag="", due_str=None, recurring=None):
     global next_id
-    if not title.strip():
+    # Handle None and empty/whitespace titles
+    if title is None or (isinstance(title, str) and not title.strip()):
         print_error("Task title cannot be empty.")
         return
 
@@ -351,9 +352,12 @@ def main():
                 print("")
                 view_tasks()
             elif cmd == "add":
-                # args: title, [desc], [prio], [tag], [due], [recurring]
-                args = parts[1:] + [None] * 5
-                add_task(args[0], args[1] or "", args[2] or "MEDIUM", args[3] or "", args[4], args[5])
+                if len(parts) < 2:
+                    print_error("Usage: add <title> [desc] [prio] [tag] [due] [recur]")
+                else:
+                    # args: title, [desc], [prio], [tag], [due], [recurring]
+                    args = parts[1:] + [None] * 5
+                    add_task(args[0], args[1] or "", args[2] or "MEDIUM", args[3] or "", args[4], args[5])
             elif cmd == "complete":
                 if len(parts) > 1: toggle_complete(int(parts[1]))
                 else: print_error("Missing ID.")
