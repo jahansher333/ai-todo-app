@@ -121,9 +121,9 @@ def view_tasks(task_list=None, query_info=None):
     print_status_bar()
 
     # Header
-    cols = f"  {COLOR_BOLD}{'ID':<3}  {'Pri':<6}  {'Status':<10}  {'Task Title':<20}  {'Description':<25}  {'Due Date':<16}  {'Tag'}{COLOR_RESET}"
+    cols = f"  {COLOR_BOLD}{'ID':<3}  {'Pri':<6}  {'Status':<10}  {'Task Title':<20}  {'Description':<50}  {'Due Date':<16}  {'Tag'}{COLOR_RESET}"
     print(cols)
-    print("  " + f"{COLOR_DIM}{SYM_LINE * 105}{COLOR_RESET}")
+    print("  " + f"{COLOR_DIM}{SYM_LINE * 130}{COLOR_RESET}")
 
     for task in display_list:
         prio_label = PRIO_COLORS.get(task['priority'], task['priority'])
@@ -136,20 +136,92 @@ def view_tasks(task_list=None, query_info=None):
 
         # Truncate description if too long
         desc = task['description'] if task['description'] else ""
-        desc_display = desc[:22] + "..." if len(desc) > 25 else desc
+        desc_display = desc[:47] + "..." if len(desc) > 50 else desc
 
         row = f"  {COLOR_CYAN}{task['id']:>3}{COLOR_RESET}  " \
               f"{prio_label}  " \
               f"{status_color}{status_sym} {status_text:<7}{COLOR_RESET}  " \
               f"{style}{task['title'][:20]:<20}{COLOR_RESET}  " \
-              f"{style}{desc_display:<25}{COLOR_RESET}  " \
+              f"{style}{desc_display:<50}{COLOR_RESET}  " \
               f"{format_date(task['due_date']):<16}  " \
               f"{tag_str}"
         print(row)
 
-    print("\n  " + f"{COLOR_DIM}{SYM_LINE * 105}{COLOR_RESET}\n")
+    print("\n  " + f"{COLOR_DIM}{SYM_LINE * 130}{COLOR_RESET}\n")
 
 # --- Task Operations ---
+
+def parse_args_with_flags(parts):
+    """Parse command args with optional flag support (--desc, --prio, --tag, --due)"""
+    args = {
+        'title': None,
+        'desc': None,
+        'prio': None,
+        'tag': None,
+        'due': None
+    }
+
+    if len(parts) <= 1:
+        return args
+
+    # If no flags, use positional arguments
+    if not any(p.startswith('--') for p in parts[1:]):
+        # Positional: title, desc, prio, tag, due
+        args['title'] = parts[1]
+        args['desc'] = parts[2] if len(parts) > 2 else None
+        args['prio'] = parts[3] if len(parts) > 3 else None
+        args['tag'] = parts[4] if len(parts) > 4 else None
+        args['due'] = parts[5] if len(parts) > 5 else None
+        return args
+
+    # Parse flags
+    i = 1
+    while i < len(parts):
+        part = parts[i]
+
+        if part == '--desc' and i + 1 < len(parts):
+            # Collect everything until next flag or end
+            i += 1
+            desc_parts = []
+            while i < len(parts) and not parts[i].startswith('--'):
+                desc_parts.append(parts[i])
+                i += 1
+            args['desc'] = ' '.join(desc_parts)
+            continue
+
+        elif part == '--prio' and i + 1 < len(parts):
+            i += 1
+            if not parts[i].startswith('--'):
+                args['prio'] = parts[i]
+                i += 1
+            continue
+
+        elif part == '--tag' and i + 1 < len(parts):
+            i += 1
+            if not parts[i].startswith('--'):
+                args['tag'] = parts[i]
+                i += 1
+            continue
+
+        elif part == '--due' and i + 1 < len(parts):
+            i += 1
+            # Collect until next flag or end
+            due_parts = []
+            while i < len(parts) and not parts[i].startswith('--'):
+                due_parts.append(parts[i])
+                i += 1
+            args['due'] = ' '.join(due_parts)
+            continue
+
+        elif not part.startswith('--'):
+            # First non-flag is the title
+            if args['title'] is None:
+                args['title'] = part
+            i += 1
+        else:
+            i += 1
+
+    return args
 
 def add_task(title, description="", priority="MEDIUM", tag="", due_str=None, recurring=None):
     global next_id
@@ -301,7 +373,7 @@ def show_help():
     print("\n  " + f"{COLOR_BOLD}{COLOR_WHITE}COMMAND GUIDE{COLOR_RESET}")
     print("  " + f"{COLOR_DIM}{SYM_LINE * 40}{COLOR_RESET}")
     commands = [
-        ("add <t> [d] [p] [tag] [due]", "Add a task (p: high/med/low)"),
+        ("add <title> --desc <desc> --prio <high|med|low>", "Add a task with flags"),
         ("list", "View all tasks"),
         ("filter <crit> <val>", "Filter: status <pending|done> or pri <h|m|l>"),
         ("search <q>", "Search in titles, tags, descriptions"),
@@ -313,7 +385,7 @@ def show_help():
         ("quit", "Exit application")
     ]
     for cmd, desc in commands:
-        print(f"  {COLOR_CYAN}{cmd:<30}{COLOR_RESET} {COLOR_DIM}{SYM_BULLET} {desc}{COLOR_RESET}")
+        print(f"  {COLOR_CYAN}{cmd:<45}{COLOR_RESET} {COLOR_DIM}{SYM_BULLET} {desc}{COLOR_RESET}")
     print("  " + f"{COLOR_DIM}{SYM_LINE * 40}{COLOR_RESET}\n")
 
 # --- Main Interface ---
@@ -353,11 +425,20 @@ def main():
                 view_tasks()
             elif cmd == "add":
                 if len(parts) < 2:
-                    print_error("Usage: add <title> [desc] [prio] [tag] [due] [recur]")
+                    print_error("Usage: add <title> --desc <desc> --prio <high|med|low> --tag <tag> --due <date>")
                 else:
-                    # args: title, [desc], [prio], [tag], [due], [recurring]
-                    args = parts[1:] + [None] * 5
-                    add_task(args[0], args[1] or "", args[2] or "MEDIUM", args[3] or "", args[4], args[5])
+                    # Parse with flags
+                    args = parse_args_with_flags(parts)
+                    if not args['title']:
+                        print_error("Task title is required.")
+                    else:
+                        add_task(
+                            args['title'] or "",
+                            args['desc'] or "",
+                            args['prio'] or "MEDIUM",
+                            args['tag'] or "",
+                            args['due']
+                        )
             elif cmd == "complete":
                 if len(parts) > 1: toggle_complete(int(parts[1]))
                 else: print_error("Missing ID.")
