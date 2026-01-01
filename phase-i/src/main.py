@@ -121,9 +121,9 @@ def view_tasks(task_list=None, query_info=None):
     print_status_bar()
 
     # Header
-    cols = f"  {COLOR_BOLD}{'ID':<3}  {'Pri':<6}  {'Status':<10}  {'Task Title':<20}  {'Due Date':<20}  {'Tag'}{COLOR_RESET}"
+    cols = f"  {COLOR_BOLD}{'ID':<3}  {'Pri':<6}  {'Status':<10}  {'Task Title':<20}  {'Description':<25}  {'Due Date':<16}  {'Tag'}{COLOR_RESET}"
     print(cols)
-    print("  " + f"{COLOR_DIM}{SYM_LINE * 85}{COLOR_RESET}")
+    print("  " + f"{COLOR_DIM}{SYM_LINE * 105}{COLOR_RESET}")
 
     for task in display_list:
         prio_label = PRIO_COLORS.get(task['priority'], task['priority'])
@@ -134,15 +134,20 @@ def view_tasks(task_list=None, query_info=None):
         style = COLOR_DIM if task['completed'] else COLOR_BOLD
         tag_str = f"{COLOR_MAGENTA}#{task['tag']}{COLOR_RESET}" if task['tag'] else ""
 
+        # Truncate description if too long
+        desc = task['description'] if task['description'] else ""
+        desc_display = desc[:22] + "..." if len(desc) > 25 else desc
+
         row = f"  {COLOR_CYAN}{task['id']:>3}{COLOR_RESET}  " \
               f"{prio_label}  " \
               f"{status_color}{status_sym} {status_text:<7}{COLOR_RESET}  " \
-              f"{style}{task['title']:<20}{COLOR_RESET}  " \
-              f"{format_date(task['due_date']):<20}  " \
+              f"{style}{task['title'][:20]:<20}{COLOR_RESET}  " \
+              f"{style}{desc_display:<25}{COLOR_RESET}  " \
+              f"{format_date(task['due_date']):<16}  " \
               f"{tag_str}"
         print(row)
 
-    print("\n  " + f"{COLOR_DIM}{SYM_LINE * 85}{COLOR_RESET}\n")
+    print("\n  " + f"{COLOR_DIM}{SYM_LINE * 105}{COLOR_RESET}\n")
 
 # --- Task Operations ---
 
