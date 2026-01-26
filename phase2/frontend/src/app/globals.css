@@ -1,0 +1,148 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Hide scrollbars on landing page */
+body:has(> div > section:first-child:where([id="hero"], [class*="hero"], .hero, .landing, #landing)) {
+  scrollbar-width: none;
+}
+
+body:has(> div > section:first-child:where([id="hero"], [class*="hero"], .hero, .landing, #landing))::-webkit-scrollbar {
+  display: none;
+}
+
+/* Custom Scrollbar Styles for other pages */
+::-webkit-scrollbar {
+  width: 14px;
+  height: 14px;
+}
+
+::-webkit-scrollbar-track {
+  background: linear-gradient(to bottom, #f0f0f0, #e0e0e0);
+  border-radius: 10px;
+  box-shadow: inset 0 0 3px rgba(0, 0, 0, 0.1);
+}
+
+::-webkit-scrollbar-track:horizontal {
+  background: linear-gradient(to right, #f0f0f0, #e0e0e0);
+}
+
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, #7e7fe2, #6a6dc5);
+  border-radius: 10px;
+  border: 2px solid #f0f0f0;
+  min-height: 30px;
+  min-width: 30px;
+}
+
+::-webkit-scrollbar-thumb:vertical {
+  background: linear-gradient(to bottom, #7e7fe2, #6a6dc5);
+}
+
+::-webkit-scrollbar-thumb:horizontal {
+  background: linear-gradient(to right, #7e7fe2, #6a6dc5);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(to bottom, #6a6dc5, #5a5cb5);
+  box-shadow: 0 0 5px rgba(106, 109, 197, 0.5);
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* For Firefox */
+html {
+  scrollbar-width: thin;
+  scrollbar-color: #6a6dc5 #e0e0e0;
+}
+
+/* Alternative method for landing page - hide if main element has landing-related classes */
+.landing-page::-webkit-scrollbar,
+.hero-section::-webkit-scrollbar,
+#landing::-webkit-scrollbar {
+  display: none;
+}
+
+.landing-page,
+.hero-section,
+#landing {
+  scrollbar-width: none;
+}
+
+/* Custom scrollbar for specific containers if needed */
+.scrollable-container::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+.scrollable-container::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 6px;
+}
+
+.scrollable-container::-webkit-scrollbar-track:horizontal {
+  background: linear-gradient(to right, #f1f1f1, #dcdcdc);
+}
+
+.scrollable-container::-webkit-scrollbar-thumb {
+  background: #c5c5c5;
+  border-radius: 6px;
+  min-height: 25px;
+  min-width: 25px;
+}
+
+.scrollable-container::-webkit-scrollbar-thumb:horizontal {
+  background: linear-gradient(to right, #c5c5c5, #b5b5b5);
+}
+
+.scrollable-container::-webkit-scrollbar-thumb:vertical {
+  background: linear-gradient(to bottom, #c5c5c5, #b5b5b5);
+}
+
+.scrollable-container::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Specific styling for areas that might have horizontal scrolling */
+.overflow-x-auto::-webkit-scrollbar:horizontal,
+.overflow-x-scroll::-webkit-scrollbar:horizontal {
+  height: 10px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-thumb:horizontal,
+.overflow-x-scroll::-webkit-scrollbar-thumb:horizontal {
+  background: linear-gradient(to right, #7e7fe2, #6a6dc5);
+  border-radius: 5px;
+  min-width: 20px;
+}
+
+.overflow-x-auto::-webkit-scrollbar-track:horizontal,
+.overflow-x-scroll::-webkit-scrollbar-track:horizontal {
+  background: linear-gradient(to right, #f0f0f0, #e0e0e0);
+  border-radius: 5px;
+}
