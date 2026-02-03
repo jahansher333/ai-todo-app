@@ -1,9 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
-import TaskCard from './TaskCard';
+import TaskCard from './TaskCard'; // Import TaskCard component
 import { Task } from '@/types/index'; // Assuming Task type is defined in types
 
 // Column types
@@ -35,24 +35,100 @@ const Column: React.FC<ColumnProps> = ({ status, tasks, onTaskDrop, onTaskEdit, 
     return false;
   });
 
+  // Define color scheme for each column
+  const getColumnStyles = (status: ColumnType, isOver: boolean) => {
+    const baseClasses = "flex-1 min-w-[300px] max-w-md rounded-xl transition-all duration-200";
+
+    switch(status) {
+      case 'To Do':
+        return `${baseClasses} ${
+          isOver
+            ? 'bg-blue-50 border-2 border-blue-400 shadow-lg'
+            : 'bg-gradient-to-b from-blue-50 to-blue-100 border border-blue-200 shadow-sm hover:shadow-md'
+        }`;
+      case 'In Progress':
+        return `${baseClasses} ${
+          isOver
+            ? 'bg-orange-50 border-2 border-orange-400 shadow-lg'
+            : 'bg-gradient-to-b from-orange-50 to-orange-100 border border-orange-200 shadow-sm hover:shadow-md'
+        }`;
+      case 'Done':
+        return `${baseClasses} ${
+          isOver
+            ? 'bg-green-50 border-2 border-green-400 shadow-lg'
+            : 'bg-gradient-to-b from-green-50 to-green-100 border border-green-200 shadow-sm hover:shadow-md'
+        }`;
+      default:
+        return `${baseClasses} ${
+          isOver
+            ? 'bg-gray-50 border-2 border-gray-400 shadow-lg'
+            : 'bg-gradient-to-b from-gray-50 to-gray-100 border border-gray-200 shadow-sm hover:shadow-md'
+        }`;
+    }
+  };
+
   return (
     <div
       ref={drop}
-      className={`flex-1 min-w-[300px] p-4 rounded-lg border ${
-        isOver ? 'bg-blue-50 border-blue-300' : 'bg-gray-50 border-gray-200'
-      }`}
+      className={getColumnStyles(status, isOver)}
     >
-      <h2 className="font-bold text-lg mb-4 text-center">{status} ({filteredTasks.length})</h2>
-      <div className="space-y-3">
-        {filteredTasks.map((task) => (
-          <TaskItem
-            key={task.id}
-            task={task}
-            onTaskEdit={onTaskEdit}
-            onTaskDelete={onTaskDelete}
-            animateTask={animateTask}
-          />
-        ))}
+      <div className="p-4">
+        {/* Column Header */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-2">
+            <div className={`w-3 h-3 rounded-full ${
+              status === 'To Do' ? 'bg-blue-500' :
+              status === 'In Progress' ? 'bg-orange-500' :
+              'bg-green-500'
+            }`}></div>
+            <h2 className="font-bold text-gray-800 text-lg">{status}</h2>
+            <span className={`text-xs px-2 py-1 rounded-full ${
+              status === 'To Do' ? 'bg-blue-200 text-blue-800' :
+              status === 'In Progress' ? 'bg-orange-200 text-orange-800' :
+              'bg-green-200 text-green-800'
+            }`}>
+              {filteredTasks.length}
+            </span>
+          </div>
+        </div>
+
+        {/* Task Count Bar */}
+        <div className="mb-4">
+          <div className="w-full bg-gray-200 rounded-full h-1.5">
+            <div
+              className={`h-1.5 rounded-full ${
+                status === 'To Do' ? 'bg-blue-500' :
+                status === 'In Progress' ? 'bg-orange-500' :
+                'bg-green-500'
+              }`}
+              style={{ width: `${Math.min(100, (filteredTasks.length / Math.max(tasks.length, 1)) * 100)}%` }}
+            ></div>
+          </div>
+        </div>
+
+        {/* Tasks Container */}
+        <div className="space-y-3 max-h-[calc(100vh-250px)] overflow-y-auto pr-2">
+          {filteredTasks.length > 0 ? (
+            filteredTasks.map((task) => (
+              <TaskItem
+                key={task.id}
+                task={task}
+                onTaskEdit={onTaskEdit}
+                onTaskDelete={onTaskDelete}
+                animateTask={animateTask}
+              />
+            ))
+          ) : (
+            <div className="text-center py-8 text-gray-500">
+              <div className="mx-auto w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-2">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+              </div>
+              <p className="text-sm">No tasks</p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -77,15 +153,15 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, onTaskEdit, onTaskDelete, ani
   return (
     <div
       ref={drag}
-      className={`cursor-move transform transition-all duration-300 ${
-        isDragging ? 'opacity-50 scale-95' :
-        animateTask === task.id ? 'animate-pulse bg-blue-50 rounded-lg p-1' : 'opacity-100'
+      className={`cursor-move transform transition-all duration-200 ${
+        isDragging ? 'opacity-60 scale-95 shadow-lg z-10' :
+        animateTask === task.id ? 'animate-pulse bg-blue-50 rounded-lg p-1' : 'opacity-100 shadow-sm hover:shadow-md'
       }`}
     >
       <TaskCard
         task={task}
         onEdit={onTaskEdit}
-        onDelete={onTaskDelete}
+        onDelete={() => onTaskDelete(task.id)}
       />
     </div>
   );
@@ -132,12 +208,12 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ tasks, onTaskUpdate, onTaskDe
 
   return (
     <DndProvider backend={HTML5Backend}>
-      <div className="flex space-x-4 overflow-x-auto pb-4">
+      <div className="flex space-x-6 overflow-x-auto pb-4 -mx-2 px-2">
         <Column
           status="To Do"
           tasks={boardTasks}
           onTaskDrop={handleTaskDrop}
-          onTaskEdit={(task) => onTaskUpdate(task)}
+          onTaskEdit={onTaskUpdate}
           onTaskDelete={onTaskDelete}
           animateTask={animateTask}
         />
@@ -145,7 +221,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ tasks, onTaskUpdate, onTaskDe
           status="In Progress"
           tasks={boardTasks}
           onTaskDrop={handleTaskDrop}
-          onTaskEdit={(task) => onTaskUpdate(task)}
+          onTaskEdit={onTaskUpdate}
           onTaskDelete={onTaskDelete}
           animateTask={animateTask}
         />
@@ -153,7 +229,7 @@ const KanbanBoard: React.FC<KanbanBoardProps> = ({ tasks, onTaskUpdate, onTaskDe
           status="Done"
           tasks={boardTasks}
           onTaskDrop={handleTaskDrop}
-          onTaskEdit={(task) => onTaskUpdate(task)}
+          onTaskEdit={onTaskUpdate}
           onTaskDelete={onTaskDelete}
           animateTask={animateTask}
         />

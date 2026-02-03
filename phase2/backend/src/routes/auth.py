@@ -3,12 +3,19 @@ from sqlmodel import Session, select
 from typing import Optional
 from datetime import datetime
 import uuid
+import sys
+import os
 from passlib.context import CryptContext
 from pydantic import BaseModel
-from ..models import User
 from ..database import engine
 from ..middleware.jwt_middleware import encode_token
 import re
+
+import sys
+import os
+# Add the backend directory to the path so we can import models
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+from models import User
 
 router = APIRouter()
 

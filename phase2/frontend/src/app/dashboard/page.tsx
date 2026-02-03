@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import KanbanBoard from '@/components/KanbanBoard';
 import TaskForm from '@/components/TaskForm';
 import Filters from '@/components/Filters';
+import { FloatingChatButton } from '@/components/FloatingChatButton';
 import { taskApi } from '@/lib/api';
 import { Task } from '@/types/index';
 import { formatErrorMessage } from '@/lib/errorHandler';
@@ -44,6 +45,9 @@ const DashboardPage: React.FC = () => {
     }
 
     fetchTasks(userId);
+
+    // Dispatch auth change event to notify other components
+    window.dispatchEvent(new CustomEvent('authChange'));
   }, []);
 
   // Fetch tasks when filters change
@@ -73,9 +77,9 @@ const DashboardPage: React.FC = () => {
       sortedTasks.sort((a, b) => {
         switch (filters.sortBy) {
           case 'due':
-            if (!a.due) return 1;
-            if (!b.due) return -1;
-            return new Date(a.due).getTime() - new Date(b.due).getTime();
+            if (!a.due_date) return 1;
+            if (!b.due_date) return -1;
+            return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
           case 'priority':
             const priorityOrder: {[key: string]: number} = { high: 3, medium: 2, low: 1 };
             return priorityOrder[b.priority] - priorityOrder[a.priority];
@@ -130,7 +134,7 @@ const DashboardPage: React.FC = () => {
     }
   };
 
-  const handleSubmitTask = async (taskData: Task) => {
+  const handleSubmitTask = async (taskData: any) => {
     try {
       const token = localStorage.getItem('access_token');
       const userId = localStorage.getItem('user_id');
@@ -169,7 +173,11 @@ const DashboardPage: React.FC = () => {
     }
   };
 
-  const handleUpdateTask = async (task: Task) => {
+  const handleFilterChange = (newFilters: any) => {
+    setFilters(newFilters);
+  };
+
+  const handleUpdateTask = async (taskData: any) => {
     try {
       const token = localStorage.getItem('access_token');
       const userId = localStorage.getItem('user_id');
@@ -179,8 +187,8 @@ const DashboardPage: React.FC = () => {
         return;
       }
 
-      const updatedTask = await taskApi.updateTask(userId, task.id, task);
-      setTasks(tasks.map(t => t.id === task.id ? updatedTask : t));
+      const updatedTask = await taskApi.updateTask(userId, taskData.id, taskData);
+      setTasks(tasks.map(t => t.id === taskData.id ? updatedTask : t));
 
       // Trigger animation for updated task
       setAnimateTask(updatedTask.id);
@@ -192,11 +200,7 @@ const DashboardPage: React.FC = () => {
     }
   };
 
-  const handleFilterChange = (newFilters: any) => {
-    setFilters(newFilters);
-  };
-
-  const handleLogout = () => {
+  const handleUserLogout = () => {
     localStorage.removeItem('access_token');
     localStorage.removeItem('user_id');
     router.push('/login');
@@ -239,7 +243,7 @@ const DashboardPage: React.FC = () => {
               </button>
 
               <button
-                onClick={handleLogout}
+                onClick={handleUserLogout}
                 className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-all duration-200 flex items-center space-x-2"
               >
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -278,7 +282,7 @@ const DashboardPage: React.FC = () => {
               </button>
               <button
                 onClick={() => {
-                  handleLogout();
+                  handleUserLogout();
                   setSidebarOpen(false);
                 }}
                 className="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50 w-full text-left"
@@ -397,117 +401,124 @@ const DashboardPage: React.FC = () => {
           </div>
         )}
 
-        {/* Task View */}
-        {viewMode === 'kanban' ? (
-          <div className="animate-slideUp">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-gray-800">Kanban Board</h2>
-              <p className="text-gray-600">{tasks.length} tasks</p>
+        <div className="flex flex-col gap-6">
+          {/* Task View */}
+          {viewMode === 'kanban' ? (
+            <div className="animate-slideUp flex-1">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-gray-800">Kanban Board</h2>
+                <p className="text-gray-600">{tasks.length} tasks</p>
+              </div>
+              <div className="overflow-x-auto -mx-4 px-4">
+                <KanbanBoard
+                  tasks={tasks}
+                  onTaskUpdate={handleUpdateTask}
+                  onTaskDelete={handleDeleteTask}
+                  animateTask={animateTask}
+                />
+              </div>
             </div>
-            <KanbanBoard
-              tasks={tasks}
-              onTaskUpdate={handleUpdateTask}
-              onTaskDelete={handleDeleteTask}
-              animateTask={animateTask}
-            />
-          </div>
-        ) : (
-          <div className="animate-slideUp">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-gray-800">List View</h2>
-              <p className="text-gray-600">{tasks.length} tasks</p>
-            </div>
-            <div className="bg-white shadow rounded-lg overflow-hidden">
-              <ul className="divide-y divide-gray-200">
-                {tasks.map((task) => (
-                  <li
-                    key={task.id}
-                    ref={task.id === animateTask ? taskRef : null}
-                    className={`transition-all duration-300 ${
-                      animateTask === task.id ? 'animate-pulse bg-blue-50' : 'bg-white'
-                    }`}
-                  >
-                    <div className="px-6 py-5 sm:px-6 flex justify-between items-center hover:bg-gray-50 transition-colors duration-200">
-                      <div className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={task.completed}
-                          onChange={() => {
-                            const updatedTask = { ...task, completed: !task.completed };
-                            handleUpdateTask(updatedTask);
-                          }}
-                          className="h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
-                        />
-                        <div className="ml-4">
-                          <p className={`text-sm font-medium ${task.completed ? 'line-through text-gray-500' : 'text-gray-900'}`}>
-                            {task.title}
-                          </p>
-                          <p className="text-sm text-gray-500 max-w-md truncate">
-                            {task.description}
-                          </p>
+          ) : (
+            <div className="animate-slideUp">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-2xl font-bold text-gray-800">List View</h2>
+                <p className="text-gray-600">{tasks.length} tasks</p>
+              </div>
+              <div className="bg-white shadow rounded-lg overflow-hidden">
+                <ul className="divide-y divide-gray-200">
+                  {tasks.map((task) => (
+                    <li
+                      key={task.id}
+                      ref={task.id === animateTask ? taskRef : null}
+                      className={`transition-all duration-300 ${
+                        animateTask === task.id ? 'animate-pulse bg-blue-50' : 'bg-white'
+                      }`}
+                    >
+                      <div className="px-6 py-5 sm:px-6 flex justify-between items-center hover:bg-gray-50 transition-colors duration-200">
+                        <div className="flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={task.completed}
+                            onChange={() => {
+                              const updatedTask = { ...task, completed: !task.completed };
+                              handleUpdateTask(updatedTask);
+                            }}
+                            className="h-5 w-5 text-blue-600 rounded focus:ring-blue-500"
+                          />
+                          <div className="ml-4">
+                            <p className={`text-sm font-medium ${task.completed ? 'line-through text-gray-500' : 'text-gray-900'}`}>
+                              {task.title}
+                            </p>
+                            <p className="text-sm text-gray-500 max-w-md truncate">
+                              {task.description}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-4">
+                          <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                            task.priority === 'high' ? 'bg-red-100 text-red-800' :
+                            task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-green-100 text-green-800'
+                          }`}>
+                            {task.priority}
+                          </span>
+                          {task.due && (
+                            <span className="text-xs text-gray-500 whitespace-nowrap">
+                              {new Date(task.due).toLocaleDateString()}
+                            </span>
+                          )}
+                          <button
+                            onClick={() => handleEditTask(task)}
+                            className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50 transition-colors duration-200"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                              <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => handleDeleteTask(task.id)}
+                            className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 transition-colors duration-200"
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                              <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                            </svg>
+                          </button>
                         </div>
                       </div>
-                      <div className="flex items-center space-x-4">
-                        <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
-                          task.priority === 'high' ? 'bg-red-100 text-red-800' :
-                          task.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                          'bg-green-100 text-green-800'
-                        }`}>
-                          {task.priority}
-                        </span>
-                        {task.due && (
-                          <span className="text-xs text-gray-500 whitespace-nowrap">
-                            {new Date(task.due).toLocaleDateString()}
-                          </span>
-                        )}
-                        <button
-                          onClick={() => handleEditTask(task)}
-                          className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-50 transition-colors duration-200"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                            <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-                          </svg>
-                        </button>
-                        <button
-                          onClick={() => handleDeleteTask(task.id)}
-                          className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-50 transition-colors duration-200"
-                        >
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                          </svg>
-                        </button>
-                      </div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {tasks.length === 0 && !loading && (
-          <div className="text-center py-16 animate-fadeIn">
-            <div className="mx-auto h-24 w-24 text-gray-400 flex items-center justify-center mb-6">
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-24 w-24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-              </svg>
-            </div>
-            <h3 className="mt-2 text-lg font-medium text-gray-900">No tasks yet</h3>
-            <p className="mt-1 text-gray-500">Get started by creating your first task.</p>
-            <div className="mt-6">
-              <button
-                onClick={handleAddTask}
-                className="inline-flex items-center px-6 py-3 border border-transparent shadow-sm text-base font-medium rounded-md text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transform hover:scale-105 transition-all duration-200"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="-ml-1 mr-3 h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
+          {tasks.length === 0 && !loading && (
+            <div className="text-center py-16 animate-fadeIn">
+              <div className="mx-auto h-24 w-24 text-gray-400 flex items-center justify-center mb-6">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-24 w-24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                 </svg>
-                Add your first task
-              </button>
+              </div>
+              <h3 className="mt-2 text-lg font-medium text-gray-900">No tasks yet</h3>
+              <p className="mt-1 text-gray-500">Get started by creating your first task.</p>
+              <div className="mt-6">
+                <button
+                  onClick={handleAddTask}
+                  className="inline-flex items-center px-6 py-3 border border-transparent shadow-sm text-base font-medium rounded-md text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transform hover:scale-105 transition-all duration-200"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="-ml-1 mr-3 h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2 0h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z" clipRule="evenodd" />
+                  </svg>
+                  Add your first task
+                </button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </main>
+
+      {/* Floating Chat Button */}
+      <FloatingChatButton />
 
       <style jsx global>{`
         @keyframes fadeIn {

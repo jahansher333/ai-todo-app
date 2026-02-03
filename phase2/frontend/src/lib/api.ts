@@ -1,53 +1,145 @@
-// API client with JWT header
-import axios from 'axios';
-import { formatErrorMessage } from './errorHandler';
+import { getAuthToken } from './auth'; // Adjust import based on your auth implementation
 
+// Base API configuration
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
 
-// Create axios instance with default config
-const apiClient = axios.create({
-  baseURL: API_BASE_URL,
-  timeout: 10000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
+/**
+ * Generic API request function with JWT token
+ */
+async function apiRequest<T>(
+  endpoint: string,
+  options: RequestInit = {},
+  includeToken: boolean = true
+): Promise<T> {
+  const config: RequestInit = {
+    headers: {
+      'Content-Type': 'application/json',
+      ...(includeToken ? { 'Authorization': `Bearer ${await getAuthToken()}` } : {}),
+      ...options.headers,
+    },
+    ...options,
+  };
 
-// Request interceptor to add JWT token to every request
-apiClient.interceptors.request.use(
-  (config) => {
-    // Get token from wherever you store it (localStorage, cookies, etc.)
-    const token = localStorage.getItem('access_token');
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
 
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
-
-// Response interceptor to handle common errors
-apiClient.interceptors.response.use(
-  (response) => {
-    return response;
-  },
-  (error) => {
-    // Handle specific error cases
-    if (error.response?.status === 401) {
-      // Token might be expired or invalid, redirect to login
+  if (!response.ok) {
+    const errorData = await response.text();
+    // If it's a 401 error, redirect to login
+    if (response.status === 401) {
+      localStorage.removeItem('auth-token');
       localStorage.removeItem('access_token');
+      localStorage.removeItem('user_id');
       window.location.href = '/login';
     }
-
-    return Promise.reject(error);
+    throw new Error(`API request failed: ${response.status} - ${errorData}`);
   }
-);
 
-export default apiClient;
+  // Handle responses that might not have JSON content
+  const contentType = response.headers.get('content-type');
+  if (contentType && contentType.includes('application/json')) {
+    return response.json();
+  } else {
+    return response.text() as unknown as T;
+  }
+}
+
+/**
+ * Chat API functions
+ */
+export interface ChatRequest {
+  message: string;
+  conversation_id?: string;
+  model_preferences?: {
+    temperature?: number;
+  };
+}
+
+export interface ChatResponse {
+  conversation_id: string;
+  response: string;
+  action_taken: string;
+  timestamp: string;
+}
+
+export interface Conversation {
+  id: string;
+  title: string;
+  created_at: string;
+  updated_at: string;
+  message_count: number;
+}
+
+export interface Message {
+  id: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  timestamp: string;
+  sequence_number: number;
+}
+
+export interface GetConversationsResponse {
+  conversations: Conversation[];
+  total_count: number;
+  limit: number;
+  offset: number;
+}
+
+export interface GetMessagesResponse {
+  messages: Message[];
+}
+
+/**
+ * Send a chat message to the AI assistant
+ */
+export async function sendChatMessage(userId: string, request: ChatRequest): Promise<ChatResponse> {
+  return apiRequest<ChatResponse>(`/api/${userId}/chat`, {
+    method: 'POST',
+    body: JSON.stringify(request),
+  });
+}
+
+/**
+ * Get user's conversations
+ */
+export async function getUserConversations(userId: string): Promise<GetConversationsResponse> {
+  return apiRequest<GetConversationsResponse>(`/api/${userId}/conversations`);
+}
+
+/**
+ * Get messages from a specific conversation
+ */
+export async function getConversationMessages(userId: string, conversationId: string): Promise<GetMessagesResponse> {
+  return apiRequest<GetMessagesResponse>(`/api/${userId}/conversations/${conversationId}/messages`);
+}
+
+/**
+ * Health check for the API
+ */
+export async function healthCheck(): Promise<{ status: string; service: string }> {
+  return apiRequest<{ status: string; service: string }>('/', {}, false);
+}
+
+/**
+ * Generic error handler for API responses
+ */
+export function handleApiError(error: any): string {
+  if (error instanceof TypeError && error.message.includes('fetch')) {
+    return 'Network error: Please check your connection';
+  }
+  if (error.response?.status === 401) {
+    return 'Unauthorized: Please log in again';
+  }
+  if (error.response?.status === 403) {
+    return 'Forbidden: You do not have access to this resource';
+  }
+  if (error.response?.status === 429) {
+    return 'Rate limit exceeded: Please try again later';
+  }
+  if (error.response?.status >= 500) {
+    return 'Server error: Please try again later';
+  }
+  return error.message || 'An unexpected error occurred';
+}
 
 // Helper function to normalize task tags
 const normalizeTaskTags = (task: any) => {
@@ -74,9 +166,9 @@ const normalizeTaskTags = (task: any) => {
 export const taskApi = {
   // Get all tasks for a user
   getTasks: async (userId: string, params?: { status?: string; priority?: string; search?: string }) => {
-    const response = await apiClient.get(`/api/${userId}/tasks`, { params });
+    const response = await apiRequest(`/api/${userId}/tasks`, { method: 'GET', params });
     // Normalize tags for all tasks
-    return response.data.map((task: any) => normalizeTaskTags(task));
+    return response.map((task: any) => normalizeTaskTags(task));
   },
 
   // Create a new task
@@ -86,8 +178,8 @@ export const taskApi = {
       ...taskData,
       tags: typeof taskData.tags === 'string' ? taskData.tags : JSON.stringify(taskData.tags || [])
     };
-    const response = await apiClient.post(`/api/${userId}/tasks`, taskDataToSend);
-    return normalizeTaskTags(response.data);
+    const response = await apiRequest(`/api/${userId}/tasks`, { method: 'POST', body: JSON.stringify(taskDataToSend) });
+    return normalizeTaskTags(response);
   },
 
   // Update a task
@@ -97,20 +189,20 @@ export const taskApi = {
       ...taskData,
       tags: typeof taskData.tags === 'string' ? taskData.tags : JSON.stringify(taskData.tags || [])
     };
-    const response = await apiClient.put(`/api/${userId}/tasks/${taskId}`, taskDataToSend);
-    return normalizeTaskTags(response.data);
+    const response = await apiRequest(`/api/${userId}/tasks/${taskId}`, { method: 'PUT', body: JSON.stringify(taskDataToSend) });
+    return normalizeTaskTags(response);
   },
 
   // Delete a task
   deleteTask: async (userId: string, taskId: string) => {
-    const response = await apiClient.delete(`/api/${userId}/tasks/${taskId}`);
-    return response.data;
+    const response = await apiRequest(`/api/${userId}/tasks/${taskId}`, { method: 'DELETE' });
+    return response;
   },
 
   // Update task completion status
   updateTaskCompletion: async (userId: string, taskId: string, completed: boolean) => {
-    const response = await apiClient.patch(`/api/${userId}/tasks/${taskId}/complete`, { completed });
-    return normalizeTaskTags(response.data);
+    const response = await apiRequest(`/api/${userId}/tasks/${taskId}/complete`, { method: 'PATCH', body: JSON.stringify({ completed }) });
+    return normalizeTaskTags(response);
   },
 };
 
@@ -118,13 +210,13 @@ export const taskApi = {
 export const userApi = {
   // Login
   login: async (email: string, password: string) => {
-    const response = await apiClient.post('/auth/login', { email, password });
-    return response.data;
+    const response = await apiRequest('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }, false);
+    return response;
   },
 
   // Register
   register: async (userData: { email: string; password: string; firstName?: string; lastName?: string }) => {
-    const response = await apiClient.post('/auth/register', userData);
-    return response.data;
+    const response = await apiRequest('/auth/register', { method: 'POST', body: JSON.stringify(userData) }, false);
+    return response;
   },
 };

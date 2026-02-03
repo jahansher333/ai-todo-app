@@ -2,10 +2,17 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlmodel import Session, select, update, delete
 from typing import List, Optional
 from datetime import datetime
-from ..models import Task, User, PriorityEnum, RecurringEnum
+import sys
+import os
 from ..database import engine
 from ..middleware.jwt_middleware import get_current_user
 import uuid
+
+import sys
+import os
+# Add the backend directory to the path so we can import models
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+from models import Task, User, PriorityEnum, RecurringEnum
 
 router = APIRouter()
 
