@@ -1,0 +1,75 @@
+# Claude Code Agent Skill: Helm Generator
+# Generates Helm YAML from specifications
+
+skill:
+  name: "helm-generator"
+  description: "Generates Helm charts and Kubernetes YAML manifests from feature specifications"
+  version: "1.0.0"
+  author: "Claude Code"
+
+parameters:
+  - name: "specification"
+    type: "string"
+    description: "Feature specification to generate Helm chart from"
+    required: true
+  - name: "chart_name"
+    type: "string"
+    description: "Name for the Helm chart"
+    required: true
+  - name: "chart_version"
+    type: "string"
+    description: "Version for the Helm chart"
+    default: "0.1.0"
+  - name: "app_version"
+    type: "string"
+    description: "Application version"
+    default: "1.0.0"
+  - name: "replicas"
+    type: "integer"
+    description: "Number of replicas for deployment"
+    default: 1
+  - name: "service_type"
+    type: "string"
+    description: "Kubernetes service type (ClusterIP, NodePort, LoadBalancer)"
+    default: "ClusterIP"
+  - name: "port"
+    type: "integer"
+    description: "Port for the service"
+    default: 80
+  - name: "image_repository"
+    type: "string"
+    description: "Docker image repository"
+    required: true
+  - name: "image_tag"
+    type: "string"
+    description: "Docker image tag"
+    default: "latest"
+
+functionality:
+  - "Generate complete Helm chart structure (Chart.yaml, values.yaml, templates/)"
+  - "Create deployment, service, and ingress templates"
+  - "Configure resource limits and requests"
+  - "Set up health checks and probes"
+  - "Generate ConfigMaps and Secrets as needed"
+  - "Provide best practices for security and performance"
+
+usage_examples:
+  - "generate Helm for backend with 2 replicas"
+  - "create Helm chart for todo-frontend service"
+  - "generate deployment and service for FastAPI app"
+  - "create ingress for Next.js frontend"
+  - "generate Helm chart with database connection"
+
+output_format:
+  - "Valid Helm chart structure"
+  - "Parameterized templates"
+  - "Proper labels and selectors"
+  - "Resource configurations"
+  - "Health checks and monitoring setup"
+
+constraints:
+  - "Follow Kubernetes best practices"
+  - "Ensure security by default (non-root users, read-only rootfs)"
+  - "Include proper resource limits"
+  - "Add health checks and readiness probes"
+  - "Maintain backward compatibility"

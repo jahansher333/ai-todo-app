@@ -1,0 +1,171 @@
+openapi: 3.0.0
+info:
+  title: Todo AI Chatbot API
+  version: 1.0.0
+  description: API for the AI-powered todo management chatbot
+
+paths:
+  /api/{user_id}/chat:
+    post:
+      summary: Process user message and return AI response
+      parameters:
+        - name: user_id
+          in: path
+          required: true
+          description: User identifier extracted from JWT
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                message:
+                  type: string
+                  description: User's input message
+                conversation_id:
+                  type: string
+                  description: Optional conversation ID to continue existing conversation
+                metadata:
+                  type: object
+                  description: Additional metadata for the message
+              required:
+                - message
+      responses:
+        '200':
+          description: Successful response from AI assistant
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  conversation_id:
+                    type: string
+                    description: ID of the conversation
+                  message:
+                    type: string
+                    description: AI's response message
+                  action_result:
+                    type: object
+                    description: Result of any actions taken by the AI
+        '401':
+          description: Unauthorized - invalid or missing JWT
+        '422':
+          description: Unprocessable entity - invalid request data
+        '500':
+          description: Internal server error
+
+  /api/conversations:
+    get:
+      summary: Get user's conversation history
+      parameters:
+        - name: user_id
+          in: query
+          required: true
+          description: User identifier
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          description: Number of conversations to return
+          schema:
+            type: integer
+            default: 10
+        - name: offset
+          in: query
+          required: false
+          description: Offset for pagination
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: List of user's conversations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  conversations:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Conversation'
+        '401':
+          description: Unauthorized - invalid or missing JWT
+
+  /api/conversations/{conversation_id}/messages:
+    get:
+      summary: Get messages from a specific conversation
+      parameters:
+        - name: conversation_id
+          in: path
+          required: true
+          description: Conversation identifier
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of messages in the conversation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  messages:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Message'
+        '401':
+          description: Unauthorized - invalid or missing JWT
+        '404':
+          description: Conversation not found
+
+components:
+  schemas:
+    Conversation:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique conversation identifier
+        user_id:
+          type: string
+          description: User who owns the conversation
+        title:
+          type: string
+          description: Optional title for the conversation
+        created_at:
+          type: string
+          format: date-time
+          description: Timestamp when conversation was created
+        updated_at:
+          type: string
+          format: date-time
+          description: Timestamp when conversation was last updated
+
+    Message:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique message identifier
+        conversation_id:
+          type: string
+          description: Conversation this message belongs to
+        user_id:
+          type: string
+          description: User who sent the message
+        role:
+          type: string
+          enum: [user, assistant]
+          description: Role of the message sender
+        content:
+          type: string
+          description: Content of the message
+        timestamp:
+          type: string
+          format: date-time
+          description: When the message was sent
