@@ -1,249 +1,249 @@
-# Todo AI-Powered Chatbot
+# Phase IV: Local Kubernetes Deployment of Todo Chatbot
 
-AI-powered chatbot interface for managing todos through natural language using MCP (Model Context Protocol) server architecture.
+This phase implements containerization and deployment of the Todo Chatbot application on a local Kubernetes cluster using Minikube.
 
-## Features
+## Architecture Overview
 
-- **Natural Language Interface**: Interact with your todo list using everyday language
-- **AI-Powered**: Uses OpenAI Agents SDK with MCP tools for intelligent task management
-- **Secure Authentication**: JWT-based authentication with user isolation
-- **Persistent Conversations**: Conversation history stored in database
-- **Stateless Architecture**: Scalable server design with all state stored in database
+The application consists of:
+- **Frontend**: Next.js application with ChatKit UI
+- **Backend**: FastAPI application with MCP and Agents SDK
+- **Database**: External Neon database connection
+- **Orchestration**: Kubernetes with Helm charts
 
-## Architecture
+## Prerequisites
 
-```
-┌─────────────────┐     ┌──────────────────────────────────────────────┐     ┌─────────────────┐
-│                 │     │              FastAPI Server                   │     │                 │
-│                 │     │  ┌────────────────────────────────────────┐  │     │    Neon DB      │
-│  ChatKit UI     │────▶│  │         Chat Endpoint                  │  │     │  (PostgreSQL)   │
-│  (Frontend)     │     │  │  POST /api/chat                        │  │     │                 │
-│                 │     │  └───────────────┬────────────────────────┘  │     │  - tasks        │
-│                 │     │                  │                           │     │  - conversations│
-│                 │     │                  ▼                           │     │  - messages     │
-│                 │     │  ┌────────────────────────────────────────┐  │     │                 │
-│                 │◀────│  │      OpenAI Agents SDK                 │  │     │                 │
-│                 │     │  │      (Agent + Runner)                  │  │     │                 │
-│                 │     │  └───────────────┬────────────────────────┘  │     │                 │
-│                 │     │                  │                           │     │                 │
-│                 │     │                  ▼                           │     │                 │
-│                 │     │  ┌────────────────────────────────────────┐  │────▶│                 │
-│                 │     │  │         MCP Server                     │  │     │                 │
-│                 │     │  │  (MCP Tools for Task Operations)       │  │◀────│                 │
-│                 │     │  └────────────────────────────────────────┘  │     │                 │
-└─────────────────┘     └──────────────────────────────────────────────┘     └─────────────────┘
-```
-
-## Technology Stack
-
-- **Frontend**: OpenAI ChatKit
-- **Backend**: Python FastAPI
-- **AI Framework**: OpenAI Agents SDK with LiteLLM
-- **MCP Server**: Official MCP SDK
-- **ORM**: SQLModel
-- **Database**: Neon Serverless PostgreSQL
-- **Authentication**: Better Auth
-
-## Database Models
-
-### Task
-- user_id, id, title, description, completed, created_at, updated_at
-
-### Conversation
-- user_id, id, created_at, updated_at
-
-### Message
-- user_id, id, conversation_id, role (user/assistant), content, created_at
-
-## API Endpoints
-
-### POST `/api/{user_id}/chat`
-Send message & get AI response
-
-**Request:**
-```json
-{
-  "message": "string",
-  "conversation_id": "string (optional)"
-}
-```
-
-**Response:**
-```json
-{
-  "conversation_id": "string",
-  "response": "string",
-  "tool_calls": "array"
-}
-```
-
-## MCP Tools
-
-The MCP server exposes the following tools for the AI agent:
-
-### add_task
-- Purpose: Create a new task
-- Parameters: user_id (required), title (required), description (optional)
-- Returns: task_id, status, title
-
-### list_tasks
-- Purpose: Retrieve tasks from the list
-- Parameters: user_id (required), status (optional: "all", "pending", "completed")
-- Returns: Array of task objects
-
-### complete_task
-- Purpose: Mark a task as complete
-- Parameters: user_id (required), task_id (required)
-- Returns: task_id, status, title
-
-### delete_task
-- Purpose: Remove a task from the list
-- Parameters: user_id (required), task_id (required)
-- Returns: task_id, status, title
-
-### update_task
-- Purpose: Modify task title or description
-- Parameters: user_id (required), task_id (required), title (optional), description (optional)
-- Returns: task_id, status, title
-
-## Natural Language Commands
-
-The chatbot understands and responds to:
-
-| User Says | Agent Should |
-|-----------|--------------|
-| "Add a task to buy groceries" | Call add_task with title "Buy groceries" |
-| "Show me all my tasks" | Call list_tasks with status "all" |
-| "What's pending?" | Call list_tasks with status "pending" |
-| "Mark task 3 as complete" | Call complete_task with task_id 3 |
-| "Delete the meeting task" | Call list_tasks first, then delete_task |
-| "Change task 1 to 'Call mom tonight'" | Call update_task with new title |
-| "I need to remember to pay bills" | Call add_task with title "Pay bills" |
-| "What have I completed?" | Call list_tasks with status "completed" |
+- Docker Desktop (with Gordon AI agent enabled)
+- Minikube
+- Helm 3.x
+- kubectl
+- kubectl-ai (optional, for AI-assisted operations)
+- kagent (optional, for AI-assisted operations)
 
 ## Setup Instructions
 
-### Prerequisites
+### 1. Start Minikube
 
-- Node.js 18+
-- Python 3.11+
-- UV package manager
-- Neon account (free tier at https://neon.tech)
+```bash
+minikube start
+```
 
-### Backend Setup
+### 2. Containerize Applications
 
-1. Navigate to backend directory:
-   ```bash
-   cd backend
-   ```
+#### Backend (FastAPI + MCP + Agents SDK):
+```bash
+# If Gordon AI is available:
+gordon ai "generate Dockerfile for FastAPI Todo app with MCP and Agents SDK"
+# Or use the provided Dockerfile in k8s/docker/backend/Dockerfile
 
-2. Create virtual environment:
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
+# Build the backend image:
+docker build -f k8s/docker/backend/Dockerfile -t todo-backend:latest .
 
-3. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
+# Test the backend container locally:
+docker run -p 8000:8000 todo-backend:latest
+```
 
-4. Create `.env` file (copy from `.env.example`):
-   ```bash
-   cp .env.example .env
-   ```
+#### Frontend (Next.js + ChatKit):
+```bash
+# If Gordon AI is available:
+gordon ai "generate Dockerfile for Next.js ChatKit app"
+# Or use the provided Dockerfile in k8s/docker/frontend/Dockerfile
 
-5. Update `.env` with your values:
-   - `DATABASE_URL`: Get from Neon.tech
-   - `BETTER_AUTH_SECRET`: Generate with `openssl rand -hex 32`
-   - `GROK_API_KEY`: Your Grok API key
-   - `LLM_MODEL`: The model to use (default: grok-beta)
+# Build the frontend image:
+docker build -f k8s/docker/frontend/Dockerfile -t todo-frontend:latest .
 
-6. Start backend server:
-   ```bash
-   uvicorn main:app --reload
-   ```
-   Backend will run on http://localhost:8000
+# Test the frontend container locally:
+docker run -p 3000:3000 todo-frontend:latest
+```
 
-### Frontend Setup
+### 3. Configure Database Connection
 
-1. Navigate to frontend directory:
-   ```bash
-   cd frontend
-   ```
+Set up your Neon database connection and update the configmap with your DATABASE_URL:
 
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
+```bash
+# Edit the configmap with your actual database URL
+kubectl create configmap todo-app-config --from-literal=DATABASE_URL="your-neon-database-url" --dry-run=client -o yaml | kubectl apply -f -
+```
 
-3. Create `.env.local` file (copy from `.env.local.example`):
-   ```bash
-   cp .env.local.example .env.local
-   ```
+### 4. Deploy with Helm
 
-4. Update `.env.local`:
-   - `NEXT_PUBLIC_API_URL`: http://localhost:8000
-   - `NEXT_PUBLIC_OPENAI_DOMAIN_KEY`: Your OpenAI domain key
-   - `BETTER_AUTH_SECRET`: Same value as backend
+#### Backend Deployment:
+```bash
+# Navigate to the backend Helm chart directory
+cd k8s/helm/todo-backend
 
-5. Start frontend server:
-   ```bash
-   npm run dev
-   ```
-   Frontend will run on http://localhost:3000
+# Install the backend chart
+helm install todo-backend . --set image.repository=todo-backend --set image.tag=latest
+```
 
-## Conversation Flow (Stateless Request Cycle)
+#### Frontend Deployment:
+```bash
+# Navigate to the frontend Helm chart directory
+cd k8s/helm/todo-frontend
 
-1. Receive user message
-2. Fetch conversation history from database
-3. Build message array for agent (history + new message)
-4. Store user message in database
-5. Run agent with MCP tools
-6. Agent invokes appropriate MCP tool(s)
-7. Store assistant response in database
-8. Return response to client
-9. Server holds NO state (ready for next request)
+# Install the frontend chart
+helm install todo-frontend . --set image.repository=todo-frontend --set image.tag=latest --set backend.apiUrl=http://todo-backend:8000
+```
 
-## Key Architecture Benefits
+### 5. Alternative: Deploy Both with Helm
 
-| Aspect | Benefit |
-|--------|---------|
-| MCP Tools | Standardized interface for AI to interact with your app |
-| Single Endpoint | Simpler API — AI handles routing to tools |
-| Stateless Server | Scalable, resilient, horizontally scalable |
-| Tool Composition | Agent can chain multiple tools in one turn |
+```bash
+# From the phase2 directory
+helm install todo-app k8s/helm/todo-backend --set image.repository=todo-backend --set image.tag=latest
+helm install todo-ui k8s/helm/todo-frontend --set image.repository=todo-frontend --set image.tag=latest --set backend.apiUrl=http://todo-app:8000
+```
 
-## Key Stateless Architecture Benefits
+### 6. Access the Application
 
-- **Scalability**: Any server instance can handle any request
-- **Resilience**: Server restarts don't lose conversation state
-- **Horizontal scaling**: Load balancer can route to any backend
-- **Testability**: Each request is independent and reproducible
+```bash
+# Get the frontend service URL
+minikube service frontend --url -n todo-chatbot
+
+# Or use minikube tunnel for external access (in a separate terminal)
+minikube tunnel
+```
+
+## AI-Assisted Operations
+
+### Using kubectl-ai for deployment:
+```bash
+# Deploy frontend with 2 replicas
+kubectl-ai "deploy frontend with 2 replicas"
+
+# Scale backend if load is high
+kubectl-ai "scale backend deployment to 3 replicas if CPU usage is high"
+
+# Analyze cluster health
+kubectl-ai "show current cluster status and resource usage"
+```
+
+### Using kagent for operations:
+```bash
+# Analyze cluster health
+kagent "analyze cluster health"
+```
+
+## Gordon AI Fallback Commands
+
+If Gordon AI is not available, use standard Docker commands:
+
+```bash
+# Backend Dockerfile (manual creation)
+cat > k8s/docker/backend/Dockerfile << EOF
+# Multi-stage build for optimized image
+FROM python:3.11-slim AS builder
+RUN apt-get update && apt-get install -y gcc g++ && rm -rf /var/lib/apt/lists/*
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+WORKDIR /app
+COPY backend/requirements.txt .
+RUN pip wheel --no-cache-dir --no-deps --wheel-dir /app/wheels -r requirements.txt
+
+FROM python:3.11-slim
+RUN apt-get update && apt-get install -y gcc g++ && rm -rf /var/lib/apt/lists/*
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH=/app
+WORKDIR /app
+COPY --from=builder /app/wheels /wheels
+RUN pip install --no-cache /wheels/*
+COPY backend/ /app/
+EXPOSE 8000
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+EOF
+
+# Frontend Dockerfile (manual creation)
+cat > k8s/docker/frontend/Dockerfile << EOF
+# Multi-stage build for optimized image
+FROM node:18-alpine AS builder
+WORKDIR /app
+COPY frontend/package*.json ./
+RUN npm ci --only=production
+COPY frontend/ .
+RUN npm run build
+
+FROM node:18-alpine AS runner
+RUN apk add --no-cache dumb-init
+WORKDIR /app
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/.next/standalone ./
+COPY --from=builder /app/.next/static ./.next/static
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/package*.json ./
+USER node
+EXPOSE 3000
+ENTRYPOINT ["dumb-init"]
+CMD ["node", "server.js"]
+EOF
+```
+
+## Testing the Deployment
+
+1. Verify all pods are running:
+```bash
+kubectl get pods -n todo-chatbot
+```
+
+2. Verify services are accessible:
+```bash
+kubectl get services -n todo-chatbot
+```
+
+3. Test the chatbot functionality:
+- Access the frontend URL
+- Verify that you can interact with the Todo Chatbot
+- Test creating, updating, and deleting todos
+- Verify data persists in the Neon database
+
+## Troubleshooting
+
+### Common Issues:
+
+1. **Images not found**: Make sure to build the Docker images before deploying with Helm
+2. **Database connection failures**: Verify the DATABASE_URL in the ConfigMap
+3. **Service not accessible**: Check if Minikube tunnel is running for external access
+
+### Useful Commands:
+```bash
+# Check pod logs
+kubectl logs -l app.kubernetes.io/name=todo-backend -n todo-chatbot
+kubectl logs -l app.kubernetes.io/name=todo-frontend -n todo-chatbot
+
+# Port forward for testing
+kubectl port-forward svc/backend -n todo-chatbot 8000:8000
+kubectl port-forward svc/frontend -n todo-chatbot 3000:3000
+
+# Check service status
+kubectl get all -n todo-chatbot
+```
+
+## Blueprint Skill Usage
+
+The Helm Generator skill can be used to generate Helm charts from specifications:
+
+```yaml
+# Example usage of the HelmGeneratorSkill
+skill: "helm-generator"
+params:
+  specification: "FastAPI backend with 2 replicas"
+  chart_name: "todo-backend"
+  image_repository: "todo-backend"
+  replicas: 2
+```
+
+This skill is defined in `phase2/.claude/skills/helm-generator.yaml` and can generate complete Helm charts from feature specifications.
 
 ## Development Status
 
-### Phase III: Todo AI-Powered Chatbot - ✅ COMPLETE
+### Phase IV: Local Kubernetes Deployment - ✅ COMPLETE
 
 All features implemented and ready for use:
 
-- ✅ **Natural Language Processing**: AI understands and processes natural language commands
-- ✅ **MCP Integration**: Official MCP SDK with 5 tools for task management
-- ✅ **Stateless Architecture**: All state persisted in Neon database
-- ✅ **JWT Authentication**: Secure user isolation with token validation
-- ✅ **Chat Interface**: OpenAI ChatKit integration in protected route
-- ✅ **Agent Behavior**: Proper confirmation and error handling
-- ✅ **Conversation Persistence**: Full conversation history maintained
-- ✅ **API Integration**: Complete backend API with proper middleware
-- ✅ **Frontend Integration**: Full chat interface with JWT token handling
+- ✅ **Containerization**: Dockerfiles for both frontend and backend applications
+- ✅ **Helm Charts**: Complete Helm charts for both frontend and backend
+- ✅ **Kubernetes Deployment**: Deployable on local Minikube cluster
+- ✅ **AI-Assisted Tools**: Integration with Gordon AI, kubectl-ai, and kagent
+- ✅ **Database Connection**: ConfigMap for Neon database connection
+- ✅ **Blueprint Skill**: HelmGeneratorSkill for generating YAML from specs
+- ✅ **Documentation**: Complete setup and deployment instructions
 
-**Total**: All 5 basic features (add, list, update, delete, complete) working via natural language
-
-## Testing
-
-Try these commands in the chat interface:
-- "Add a task to buy groceries"
-- "Show me all my tasks"
-- "Mark task 3 as complete"
-- "Delete the meeting task"
-- "Change task 1 to 'Call mom tonight'"
+**Total**: Full containerization, orchestration, and deployment pipeline established for local Kubernetes environment

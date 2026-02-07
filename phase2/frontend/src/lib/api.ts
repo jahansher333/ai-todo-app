@@ -166,7 +166,16 @@ const normalizeTaskTags = (task: any) => {
 export const taskApi = {
   // Get all tasks for a user
   getTasks: async (userId: string, params?: { status?: string; priority?: string; search?: string }) => {
-    const response = await apiRequest(`/api/${userId}/tasks`, { method: 'GET', params });
+    // Build query string from params
+    const queryParams = new URLSearchParams();
+    if (params?.status) queryParams.append('status', params.status);
+    if (params?.priority) queryParams.append('priority', params.priority);
+    if (params?.search) queryParams.append('search', params.search);
+    
+    const queryString = queryParams.toString();
+    const url = `/api/${userId}/tasks${queryString ? '?' + queryString : ''}`;
+    
+    const response = await apiRequest<any[]>(url, { method: 'GET' });
     // Normalize tags for all tasks
     return response.map((task: any) => normalizeTaskTags(task));
   },
@@ -206,17 +215,26 @@ export const taskApi = {
   },
 };
 
+// Define user response type
+export interface UserResponse {
+  id: string;
+  email: string;
+  first_name?: string;
+  last_name?: string;
+  token: string;
+}
+
 // Export user-related API functions
 export const userApi = {
   // Login
-  login: async (email: string, password: string) => {
-    const response = await apiRequest('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }, false);
+  login: async (email: string, password: string): Promise<UserResponse> => {
+    const response = await apiRequest<UserResponse>('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }, false);
     return response;
   },
 
   // Register
-  register: async (userData: { email: string; password: string; firstName?: string; lastName?: string }) => {
-    const response = await apiRequest('/auth/register', { method: 'POST', body: JSON.stringify(userData) }, false);
+  register: async (userData: { email: string; password: string; firstName?: string; lastName?: string }): Promise<UserResponse> => {
+    const response = await apiRequest<UserResponse>('/auth/register', { method: 'POST', body: JSON.stringify(userData) }, false);
     return response;
   },
 };

@@ -19,6 +19,8 @@ interface ColumnProps {
 }
 
 const Column: React.FC<ColumnProps> = ({ status, tasks, onTaskDrop, onTaskEdit, onTaskDelete, animateTask }) => {
+  const dropRef = useRef<HTMLDivElement>(null);
+
   const [{ isOver }, drop] = useDrop(() => ({
     accept: 'TASK',
     drop: (item: { id: string }) => onTaskDrop(item.id, status),
@@ -26,6 +28,8 @@ const Column: React.FC<ColumnProps> = ({ status, tasks, onTaskDrop, onTaskEdit, 
       isOver: !!monitor.isOver(),
     }),
   }));
+
+  drop(dropRef);
 
   // Filter tasks based on column status
   const filteredTasks = tasks.filter(task => {
@@ -69,7 +73,7 @@ const Column: React.FC<ColumnProps> = ({ status, tasks, onTaskDrop, onTaskEdit, 
 
   return (
     <div
-      ref={drop}
+      ref={dropRef}
       className={getColumnStyles(status, isOver)}
     >
       <div className="p-4">
@@ -142,6 +146,8 @@ interface TaskItemProps {
 }
 
 const TaskItem: React.FC<TaskItemProps> = ({ task, onTaskEdit, onTaskDelete, animateTask }) => {
+  const dragRef = useRef<HTMLDivElement>(null);
+
   const [{ isDragging }, drag] = useDrag(() => ({
     type: 'TASK',
     item: { id: task.id },
@@ -150,9 +156,11 @@ const TaskItem: React.FC<TaskItemProps> = ({ task, onTaskEdit, onTaskDelete, ani
     }),
   }));
 
+  drag(dragRef);
+
   return (
     <div
-      ref={drag}
+      ref={dragRef}
       className={`cursor-move transform transition-all duration-200 ${
         isDragging ? 'opacity-60 scale-95 shadow-lg z-10' :
         animateTask === task.id ? 'animate-pulse bg-blue-50 rounded-lg p-1' : 'opacity-100 shadow-sm hover:shadow-md'

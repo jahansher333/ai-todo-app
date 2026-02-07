@@ -27,7 +27,11 @@ const DashboardPage: React.FC = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [animateTask, setAnimateTask] = useState<string | null>(null);
   const router = useRouter();
-  const taskRef = useRef<HTMLDivElement>(null);
+  const taskRefs = useRef<{[key: string]: HTMLLIElement | null}>({});
+  
+  const setTaskRef = (id: string) => (element: HTMLLIElement | null) => {
+    taskRefs.current[id] = element;
+  };
 
   // Check if user is authenticated
   useEffect(() => {
@@ -429,7 +433,7 @@ const DashboardPage: React.FC = () => {
                   {tasks.map((task) => (
                     <li
                       key={task.id}
-                      ref={task.id === animateTask ? taskRef : null}
+                      ref={task.id === animateTask ? setTaskRef(task.id) : null}
                       className={`transition-all duration-300 ${
                         animateTask === task.id ? 'animate-pulse bg-blue-50' : 'bg-white'
                       }`}
