@@ -1,22 +1,22 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "todo-frontend.fullname" . }}
+  name: {{ include "todo-chatbot.fullname" . }}
   labels:
-    {{- include "todo-frontend.labels" . | nindent 4 }}
+    {{- include "todo-chatbot.labels" . | nindent 4 }}
 spec:
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
   {{- end }}
   selector:
     matchLabels:
-      {{- include "todo-frontend.selectorLabels" . | nindent 6 }}
+      {{- include "todo-chatbot.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       annotations:
         dapr.io/enabled: "true"
-        dapr.io/app-id: "todo-frontend"
-        dapr.io/app-port: "3000"
+        dapr.io/app-id: "todo-chatbot"
+        dapr.io/app-port: "8001"
         dapr.io/app-protocol: "http"
         dapr.io/config: "{{ .Values.dapr.config }}"
         dapr.io/log-level: "{{ .Values.dapr.logLevel }}"
@@ -25,13 +25,13 @@ spec:
         {{- toYaml . | nindent 8 }}
         {{- end }}
       labels:
-        {{- include "todo-frontend.selectorLabels" . | nindent 8 }}
+        {{- include "todo-chatbot.selectorLabels" . | nindent 8 }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "todo-frontend.serviceAccountName" . }}
+      serviceAccountName: {{ include "todo-chatbot.serviceAccountName" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
       containers:
@@ -42,17 +42,17 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http
-              containerPort: 3000
+              containerPort: 8001
               protocol: TCP
           livenessProbe:
             httpGet:
-              path: /
+              path: /health
               port: http
             initialDelaySeconds: 30
             periodSeconds: 10
           readinessProbe:
             httpGet:
-              path: /
+              path: /health/ready
               port: http
             initialDelaySeconds: 5
             periodSeconds: 5
@@ -61,6 +61,8 @@ spec:
           env:
             - name: BACKEND_URL
               value: "http://todo-backend:8000"
+            - name: DAPR_ENABLED
+              value: "true"
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

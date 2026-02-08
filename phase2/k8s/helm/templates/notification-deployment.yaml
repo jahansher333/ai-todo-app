@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification-service
+  labels:
+    app: notification-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: notification-service
+  template:
+    metadata:
+      annotations:
+        dapr.io/enabled: "true"
+        dapr.io/app-id: "notification-service"
+        dapr.io/app-port: "8080"
+        dapr.io/app-protocol: "http"
+        dapr.io/config: "dapr-config"
+        dapr.io/log-level: "info"
+      labels:
+        app: notification-service
+    spec:
+      containers:
+      - name: notification-service
+        image: busybox
+        command: ['sh', '-c', 'echo Notification service running; sleep 3600']
+        ports:
+        - containerPort: 8080

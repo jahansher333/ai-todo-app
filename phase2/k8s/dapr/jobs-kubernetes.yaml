@@ -1,0 +1,23 @@
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: task-jobs
+  namespace: default
+spec:
+  type: bindings.kubernetes
+  version: v1
+  metadata:
+  - name: namespace
+    value: "default"
+  - name: resourceKind
+    value: "Job"
+  - name: resourceAPIVersion
+    value: "batch/v1"
+  - name: podTemplateSpec
+    value: |
+      spec:
+        restartPolicy: Never
+        containers:
+        - name: reminder-job
+          image: busybox
+          command: ['sh', '-c', 'echo Reminder job executed at $(date); sleep 30']

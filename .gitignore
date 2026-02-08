@@ -33,3 +33,5 @@ Thumbs.db
 .idea/
 *.log
 ".tmp-*.tar*" 
+hf_space/
+hf_space_full/

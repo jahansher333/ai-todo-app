@@ -1,0 +1,39 @@
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: advanced-task-pubsub
+  namespace: default
+spec:
+  type: pubsub.kafka
+  version: v1
+  metadata:
+  - name: brokers
+    value: "redpanda.redpanda.svc.cluster.local:9092"
+  - name: consumerGroup
+    value: "advanced-task-consumers"
+  - name: authType
+    value: "none"
+  - name: disableTls
+    value: "true"
+  - name: maxMessageBytes
+    value: "1048576"
+  - name: consumeRetryInterval
+    value: "100ms"
+  - name: publishTimeout
+    value: "30s"
+  - name: dialTimeout
+    value: "30s"
+  - name: readTimeout
+    value: "30s"
+  - name: writeTimeout
+    value: "30s"
+  - name: saslUsername
+    secretKeyRef:
+      name: kafka-auth-secret
+      key: username
+  - name: saslPassword
+    secretKeyRef:
+      name: kafka-auth-secret
+      key: password
+auth:
+  secretStore: kubernetes-secrets

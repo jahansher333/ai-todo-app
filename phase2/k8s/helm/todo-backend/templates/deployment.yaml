@@ -13,10 +13,21 @@ spec:
       {{- include "todo-backend.selectorLabels" . | nindent 6 }}
   template:
     metadata:
-      {{- with .Values.podAnnotations }}
       annotations:
+        dapr.io/enabled: "true"
+        dapr.io/app-id: "{{ .Values.dapr.appId }}"
+        dapr.io/app-port: "{{ .Values.dapr.appPort }}"
+        dapr.io/app-protocol: "{{ .Values.dapr.appProtocol }}"
+        dapr.io/config: "{{ .Values.dapr.config }}"
+        dapr.io/log-level: "{{ .Values.dapr.logLevel }}"
+        dapr.io/enable-profiling: "{{ .Values.dapr.enableProfiling }}"
+        dapr.io/profiling-port: "{{ .Values.dapr.profilingPort }}"
+        dapr.io/max-concurrency: "{{ .Values.dapr.maxConcurrency }}"
+        dapr.io/enable-api-logging: "{{ .Values.dapr.enableApiLogging }}"
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
         {{- toYaml . | nindent 8 }}
-      {{- end }}
+        {{- end }}
       labels:
         {{- include "todo-backend.selectorLabels" . | nindent 8 }}
     spec:
@@ -35,24 +46,25 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: http
-              containerPort: 8000
+              containerPort: {{ .Values.dapr.appPort }}
               protocol: TCP
           livenessProbe:
             httpGet:
-              path: /docs
+              path: /health
               port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
           readinessProbe:
             httpGet:
-              path: /docs
+              path: /health/ready
               port: http
-          env:
-            - name: DATABASE_URL
-              valueFrom:
-                configMapKeyRef:
-                  name: {{ include "todo-backend.fullname" . }}-config
-                  key: database_url
+            initialDelaySeconds: 5
+            periodSeconds: 5
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+          env:
+            - name: DAPR_ENABLED
+              value: "true"
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

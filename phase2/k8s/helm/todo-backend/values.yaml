@@ -6,13 +6,13 @@ replicaCount: 1
 
 image:
   repository: todo-backend
-  pullPolicy: Never
+  pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "latest"
+  tag: ""
 
 imagePullSecrets: []
 nameOverride: ""
-fullnameOverride: ""
+fullnameOverride: "todo-backend"
 
 serviceAccount:
   # Specifies whether a service account should be created
@@ -81,10 +81,15 @@ tolerations: []
 
 affinity: {}
 
-# Database configuration
-database:
-  url: "sqlite:///./todo.db"
-  host: ""
-  port: 5432
-  name: ""
-  ssl: true
+# Dapr specific configurations
+dapr:
+  enabled: true
+  appId: "todo-backend"
+  appPort: 8000
+  appProtocol: "http"
+  config: "dapr-config"
+  logLevel: "info"
+  enableProfiling: false
+  profilingPort: 7777
+  maxConcurrency: -1
+  enableApiLogging: false

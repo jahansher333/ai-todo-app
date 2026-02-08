@@ -1,0 +1,33 @@
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: advanced-task-state
+  namespace: default
+spec:
+  type: state.postgresql
+  version: v1
+  metadata:
+  - name: connectionString
+    secretKeyRef:
+      name: postgresql-secret
+      key: connection-string
+  - name: versionColumnName
+    value: "_etag"
+  - name: tableName
+    value: "dapr_state_store"
+  - name: migrationTableName
+    value: "dapr_state_migrations"
+  - name: schemaName
+    value: "public"
+  - name: maxConns
+    value: "30"
+  - name: minConns
+    value: "5"
+  - name: connMaxIdleTime
+    value: "30m"
+  - name: connMaxLifetime
+    value: "1h"
+  - name: disableNestedObjectEncoding
+    value: "false"
+auth:
+  secretStore: kubernetes-secrets
