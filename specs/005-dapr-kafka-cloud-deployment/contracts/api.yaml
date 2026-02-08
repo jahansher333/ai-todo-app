@@ -1,0 +1,572 @@
+openapi: 3.0.3
+info:
+  title: Todo Chatbot API - Phase V
+  description: Event-driven Todo API with Dapr integration, priorities, tags, recurring tasks, and reminders
+  version: 5.0.0
+
+servers:
+  - url: http://localhost:8000
+    description: Local development
+  - url: https://api.todo-app.example.com
+    description: Production (DOKS)
+
+paths:
+  # Task CRUD
+  /tasks:
+    get:
+      summary: List tasks with search/filter
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, in_progress, completed, cancelled]
+        - name: priority
+          in: query
+          schema:
+            type: string
+            enum: [high, medium, low]
+        - name: tags
+          in: query
+          description: Comma-separated tag names
+          schema:
+            type: string
+        - name: search
+          in: query
+          description: Text search in title/description
+          schema:
+            type: string
+        - name: due_before
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: due_after
+          in: query
+          schema:
+            type: string
+            format: date-time
+        - name: sort_by
+          in: query
+          schema:
+            type: string
+            enum: [priority, due_date, created_at, title]
+            default: created_at
+        - name: sort_order
+          in: query
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+      responses:
+        '200':
+          description: List of tasks
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tasks:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Task'
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+    post:
+      summary: Create new task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskCreate'
+      responses:
+        '201':
+          description: Task created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+
+  /tasks/{task_id}:
+    parameters:
+      - name: task_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      summary: Get task by ID
+      responses:
+        '200':
+          description: Task details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '404':
+          description: Task not found
+    put:
+      summary: Update task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskUpdate'
+      responses:
+        '200':
+          description: Task updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+    delete:
+      summary: Delete task
+      responses:
+        '204':
+          description: Task deleted
+
+  /tasks/{task_id}/complete:
+    parameters:
+      - name: task_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      summary: Mark task as complete
+      responses:
+        '200':
+          description: Task completed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+
+  # Tags
+  /tags:
+    get:
+      summary: List all tags with usage counts
+      responses:
+        '200':
+          description: List of tags
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tags:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Tag'
+    post:
+      summary: Create new tag
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                  pattern: '^[a-z0-9_-]+$'
+      responses:
+        '201':
+          description: Tag created
+
+  /tags/{tag_id}:
+    parameters:
+      - name: tag_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    delete:
+      summary: Delete tag (only if unused)
+      responses:
+        '204':
+          description: Tag deleted
+        '409':
+          description: Tag is in use
+
+  # Reminders
+  /tasks/{task_id}/reminders:
+    parameters:
+      - name: task_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    get:
+      summary: List reminders for task
+      responses:
+        '200':
+          description: List of reminders
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Reminder'
+    post:
+      summary: Add reminder to task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReminderCreate'
+      responses:
+        '201':
+          description: Reminder created
+
+  /reminders/{reminder_id}:
+    parameters:
+      - name: reminder_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    delete:
+      summary: Cancel/delete reminder
+      responses:
+        '204':
+          description: Reminder cancelled
+
+  /reminders/{reminder_id}/snooze:
+    parameters:
+      - name: reminder_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      summary: Snooze reminder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                snooze_minutes:
+                  type: integer
+                  minimum: 1
+                  maximum: 1440
+      responses:
+        '200':
+          description: Reminder snoozed
+
+  # Recurring Tasks
+  /tasks/{task_id}/recurring:
+    parameters:
+      - name: task_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+    post:
+      summary: Make task recurring
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RecurringRule'
+      responses:
+        '200':
+          description: Recurrence rule applied
+    delete:
+      summary: Stop task from recurring
+      responses:
+        '200':
+          description: Recurrence stopped
+
+  # Dapr Pub/Sub Webhooks (for internal use)
+  /dapr/subscribe:
+    get:
+      summary: Dapr subscription endpoint
+      responses:
+        '200':
+          description: Subscription list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    pubsubname:
+                      type: string
+                    topic:
+                      type: string
+                    route:
+                      type: string
+
+  /events/task-events:
+    post:
+      summary: Receive task events from Dapr Pub/Sub
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                pubsubname:
+                  type: string
+                topic:
+                  type: string
+                data:
+                  type: object
+      responses:
+        '200':
+          description: Event processed
+
+  /events/reminders:
+    post:
+      summary: Receive reminder trigger events
+      requestBody:
+        content:
+          application/cloudevents+json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Reminder processed
+
+  # Webhook management
+  /webhooks:
+    get:
+      summary: List configured webhooks
+      responses:
+        '200':
+          description: List of webhooks
+    post:
+      summary: Register webhook for events
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Webhook'
+      responses:
+        '201':
+          description: Webhook registered
+
+  # Health checks
+  /health:
+    get:
+      summary: Health check for K8s probes
+      responses:
+        '200':
+          description: Service healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [healthy, unhealthy]
+                  version:
+                    type: string
+
+  /health/ready:
+    get:
+      summary: Readiness probe
+      responses:
+        '200':
+          description: Ready to receive traffic
+        '503':
+          description: Not ready
+
+components:
+  schemas:
+    Task:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum: [pending, in_progress, completed, cancelled]
+        priority:
+          type: string
+          enum: [high, medium, low]
+        due_date:
+          type: string
+          format: date-time
+          nullable: true
+        tags:
+          type: array
+          items:
+            type: string
+        is_recurring:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+
+    TaskCreate:
+      type: object
+      required: [title]
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+        priority:
+          type: string
+          enum: [high, medium, low]
+          default: medium
+        due_date:
+          type: string
+          format: date-time
+        tags:
+          type: array
+          items:
+            type: string
+          maxItems: 10
+
+    TaskUpdate:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+        priority:
+          type: string
+          enum: [high, medium, low]
+        due_date:
+          type: string
+          format: date-time
+        tags:
+          type: array
+          items:
+            type: string
+          maxItems: 10
+
+    Tag:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        usage_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+
+    Reminder:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        task_id:
+          type: string
+          format: uuid
+        trigger_at:
+          type: string
+          format: date-time
+        channel:
+          type: string
+          enum: [in_app, webhook, email]
+        status:
+          type: string
+          enum: [pending, sent, failed, cancelled]
+        retry_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+
+    ReminderCreate:
+      type: object
+      required: [trigger_at, channel]
+      properties:
+        trigger_at:
+          type: string
+          format: date-time
+        channel:
+          type: string
+          enum: [in_app, webhook, email]
+        webhook_url:
+          type: string
+          format: uri
+        email_address:
+          type: string
+          format: email
+
+    RecurringRule:
+      type: object
+      required: [pattern_type]
+      properties:
+        pattern_type:
+          type: string
+          enum: [daily, weekly, monthly, custom]
+        cron_expression:
+          type: string
+          description: Required for custom pattern
+        interval_days:
+          type: integer
+          minimum: 1
+        max_occurrences:
+          type: integer
+          minimum: 1
+        end_date:
+          type: string
+          format: date-time
+
+    Webhook:
+      type: object
+      required: [url, events]
+      properties:
+        id:
+          type: string
+          format: uuid
+        url:
+          type: string
+          format: uri
+        events:
+          type: array
+          items:
+            type: string
+            enum: [task.created, task.updated, task.completed, task.deleted, reminder.triggered]
+        secret:
+          type: string
+          description: For HMAC signature verification
+        created_at:
+          type: string
+          format: date-time

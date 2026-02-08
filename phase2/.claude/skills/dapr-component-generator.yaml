@@ -1,0 +1,160 @@
+name: DaprComponentGenerator
+friendly_name: Dapr Component Generator
+description: A skill to generate Dapr YAML configuration files based on specifications
+version: 1.0.0
+author: Spec-Kit Plus
+category: infrastructure
+tags: [dapr, kubernetes, configuration, yaml]
+
+input_schema:
+  type: object
+  properties:
+    component_type:
+      type: string
+      enum: ["pubsub", "state", "bindings", "secretstores", "middleware"]
+      description: "Type of Dapr component to generate"
+    sub_type:
+      type: string
+      description: "Specific type of component (e.g., 'kafka' for pubsub, 'postgresql' for state)"
+    name:
+      type: string
+      description: "Name of the Dapr component"
+    properties:
+      type: object
+      description: "Properties specific to the component type"
+      additionalProperties: true
+    namespace:
+      type: string
+      default: "default"
+      description: "Kubernetes namespace for the component"
+  required:
+    - component_type
+    - sub_type
+    - name
+    - properties
+
+implementation:
+  type: code
+  language: python
+  code: |
+    def generate_dapr_component(component_type, sub_type, name, properties, namespace="default"):
+        """
+        Generate Dapr component YAML based on specifications
+        """
+        import yaml
+
+        # Construct the component type
+        dapr_type = f"{component_type}.{sub_type}"
+
+        # Base component structure
+        component = {
+            "apiVersion": "dapr.io/v1alpha1",
+            "kind": "Component",
+            "metadata": {
+                "name": name,
+                "namespace": namespace
+            },
+            "spec": {
+                "type": dapr_type,
+                "version": "v1",
+                "metadata": []
+            }
+        }
+
+        # Add properties as metadata fields
+        for key, value in properties.items():
+            if isinstance(value, dict) and "secretKeyRef" in value:
+                # Handle secret references specially
+                component["spec"]["metadata"].append({
+                    "name": key,
+                    "secretKeyRef": value["secretKeyRef"]
+                })
+            else:
+                component["spec"]["metadata"].append({
+                    "name": key,
+                    "value": value
+                })
+
+        # Convert to YAML
+        yaml_output = yaml.dump(component, default_flow_style=False)
+        return yaml_output
+
+    # Main execution
+    result = generate_dapr_component(
+        component_type=input_params["component_type"],
+        sub_type=input_params["sub_type"],
+        name=input_params["name"],
+        properties=input_params["properties"],
+        namespace=input_params.get("namespace", "default")
+    )
+
+    output = {
+        "yaml_content": result,
+        "filename": f"{input_params['name']}.yaml",
+        "component_type": input_params["component_type"]
+    }
+
+execution_context:
+  timeout: 30
+  memory_limit: "128MB"
+  cpu_limit: "100m"
+
+output_schema:
+  type: object
+  properties:
+    yaml_content:
+      type: string
+      description: "Generated Dapr component YAML content"
+    filename:
+      type: string
+      description: "Suggested filename for the component"
+    component_type:
+      type: string
+      description: "Type of component that was generated"
+
+examples:
+  - description: "Generate a Kafka pubsub component"
+    input:
+      component_type: "pubsub"
+      sub_type: "kafka"
+      name: "task-pubsub"
+      properties:
+        brokers: "redpanda.redpanda.svc.cluster.local:9092"
+        consumerGroup: "task-consumers"
+        authType: "none"
+        disableTls: "true"
+    output_keys:
+      - yaml_content
+      - filename
+
+  - description: "Generate a PostgreSQL state component"
+    input:
+      component_type: "state"
+      sub_type: "postgresql"
+      name: "task-state"
+      properties:
+        connectionString:
+          secretKeyRef:
+            name: "neon-db-secret"
+            key: "connection-string"
+        versionColumnName: "_etag"
+        tableName: "state_store"
+    output_keys:
+      - yaml_content
+      - filename
+
+documentation:
+  usage: |
+    Use this skill to generate standardized Dapr component YAML files.
+
+    Available component types:
+    - pubsub: kafka, redis, rabbitmq
+    - state: postgresql, redis, mongodb
+    - bindings: cron, http, aws-sqs
+    - secretstores: kubernetes, aws-secrets-manager
+    - middleware: circuitbreaker, ratelimiting
+
+  notes: |
+    - This skill generates syntactically correct Dapr component definitions
+    - Always review generated YAML before applying to production
+    - Secret references should be handled separately in actual deployment

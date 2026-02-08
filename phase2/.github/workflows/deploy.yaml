@@ -1,0 +1,238 @@
+name: Deploy Full Todo Stack to DOKS
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  REGISTRY: registry.digitalocean.com/todo-registry
+  BACKEND_IMAGE_NAME: todo-backend
+  FRONTEND_IMAGE_NAME: todo-frontend
+  CHATBOT_IMAGE_NAME: todo-chatbot
+  NOTIFICATION_IMAGE_NAME: notification-service
+
+jobs:
+  build-and-push-backend:
+    runs-on: ubuntu-latest
+    outputs:
+      image-tag: ${{ steps.meta.outputs.version }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to DigitalOcean Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: registry.digitalocean.com
+        username: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+        password: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+
+    - name: Extract metadata for Docker
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }}
+        tags: |
+          type=sha
+          type=raw,value=latest
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./phase2/backend/Dockerfile.backend
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+
+  build-and-push-frontend:
+    runs-on: ubuntu-latest
+    needs: build-and-push-backend
+    outputs:
+      image-tag: ${{ steps.meta.outputs.version }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to DigitalOcean Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: registry.digitalocean.com
+        username: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+        password: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+
+    - name: Extract metadata for Docker
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }}
+        tags: |
+          type=sha
+          type=raw,value=latest
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./phase2/frontend/Dockerfile.frontend
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+
+  build-and-push-chatbot:
+    runs-on: ubuntu-latest
+    needs: build-and-push-backend
+    outputs:
+      image-tag: ${{ steps.meta.outputs.version }}
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to DigitalOcean Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: registry.digitalocean.com
+        username: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+        password: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+
+    - name: Extract metadata for Docker
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.CHATBOT_IMAGE_NAME }}
+        tags: |
+          type=sha
+          type=raw,value=latest
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        file: ./phase2/chatbot/Dockerfile.chatbot
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+
+  deploy:
+    needs: [build-and-push-backend, build-and-push-frontend, build-and-push-chatbot]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Install doctl
+      uses: digitalocean/action-doctl@v2
+      with:
+        token: ${{ secrets.DIGITALOCEAN_ACCESS_TOKEN }}
+
+    - name: Install kubectl
+      uses: azure/setup-kubectl@v3
+      with:
+        version: 'latest'
+
+    - name: Install Helm
+      uses: azure/setup-helm@v3
+      with:
+        version: 'latest'
+
+    - name: Configure kubectl for DigitalOcean
+      run: |
+        doctl kubernetes cluster kubeconfig save ${{ secrets.DOKS_CLUSTER_NAME }}
+
+    - name: Install Dapr
+      run: |
+        wget -q https://raw.githubusercontent.com/dapr/cli/master/install/install.sh -O - | /bin/bash
+        dapr init -k --wait
+        kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=dapr-placement-server --timeout=300s
+        kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=dapr-sidecar-injector --timeout=300s
+        kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=dapr-operator --timeout=300s
+
+    - name: Deploy Dapr components
+      run: |
+        kubectl apply -f phase2/k8s/dapr/
+
+    - name: Wait for Dapr components to be ready
+      run: |
+        kubectl wait --for=condition=ready component --all --timeout=300s
+
+    - name: Deploy Redpanda (Kafka replacement)
+      run: |
+        kubectl create namespace redpanda || true
+        helm repo add redpanda https://charts.redpanda.com
+        helm repo update
+        helm install redpanda redpanda/redpanda \
+          --namespace redpanda \
+          --set 'console.enabled=false' \
+          --set 'auth.sasl.enabled=false' \
+          --wait
+
+    - name: Deploy PostgreSQL
+      run: |
+        kubectl create namespace postgresql || true
+        helm repo add bitnami https://charts.bitnami.com/bitnami
+        helm repo update
+        helm install postgresql bitnami/postgresql \
+          --namespace postgresql \
+          --set 'auth.postgresPassword=secretpassword' \
+          --set 'primary.persistence.enabled=false' \
+          --wait
+
+    - name: Deploy full application stack with Helm
+      run: |
+        cd phase2/k8s/helm
+        helm dependency update
+        helm upgrade --install todo-app . \
+          --set todoBackend.image.repository=${{ env.REGISTRY }}/${{ env.BACKEND_IMAGE_NAME }} \
+          --set todoBackend.image.tag=${{ needs.build-and-push-backend.outputs.image-tag }} \
+          --set todoFrontend.image.repository=${{ env.REGISTRY }}/${{ env.FRONTEND_IMAGE_NAME }} \
+          --set todoFrontend.image.tag=${{ needs.build-and-push-frontend.outputs.image-tag }} \
+          --set todoChatbot.image.repository=${{ env.REGISTRY }}/${{ env.CHATBOT_IMAGE_NAME }} \
+          --set todoChatbot.image.tag=${{ needs.build-and-push-chatbot.outputs.image-tag }} \
+          --wait
+
+    - name: Verify deployment
+      run: |
+        kubectl get pods -n default
+        kubectl get services -n default
+        kubectl get pods -n redpanda
+        kubectl get pods -n postgresql
+        kubectl get components.dapr.io -A
+
+    - name: Run health checks
+      run: |
+        # Wait for services to be ready
+        kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=todo-backend --timeout=300s
+        kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=todo-frontend --timeout=300s
+        kubectl wait --for=condition=ready pod -l app.kubernetes.io/name=todo-chatbot --timeout=300s
+        
+        # Check if all pods are running
+        echo "Checking pod statuses..."
+        kubectl get pods --all-namespaces
+
+  notify-success:
+    needs: deploy
+    runs-on: ubuntu-latest
+    if: success()
+    steps:
+      - name: Notify on success
+        run: echo "Deployment completed successfully!"
+
+  notify-failure:
+    needs: [build-and-push-backend, build-and-push-frontend, build-and-push-chatbot, deploy]
+    runs-on: ubuntu-latest
+    if: failure()
+    steps:
+      - name: Notify on failure
+        run: echo "Deployment failed!"

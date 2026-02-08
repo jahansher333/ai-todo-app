@@ -1,0 +1,20 @@
+apiVersion: v2
+name: todo-full-stack
+description: Umbrella Helm chart for the full Todo application stack with Dapr integration
+type: application
+version: 5.0.0
+appVersion: "5.0.0"
+
+dependencies:
+  - name: todo-backend
+    version: 5.0.0
+    repository: "file://./todo-backend"
+    condition: todoBackend.enabled
+  - name: todo-frontend
+    version: 5.0.0
+    repository: "file://./todo-frontend"
+    condition: todoFrontend.enabled
+  - name: todo-chatbot
+    version: 5.0.0
+    repository: "file://./todo-chatbot"
+    condition: todoChatbot.enabled

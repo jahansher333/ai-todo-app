@@ -1,18 +1,18 @@
-# Default values for todo-frontend
+# Default values for todo-chatbot
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
 replicaCount: 1
 
 image:
-  repository: todo-frontend
+  repository: todo-chatbot
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: ""
 
 imagePullSecrets: []
 nameOverride: ""
-fullnameOverride: "todo-frontend"
+fullnameOverride: "todo-chatbot"
 
 serviceAccount:
   # Specifies whether a service account should be created
@@ -38,7 +38,7 @@ securityContext: {}
 
 service:
   type: ClusterIP
-  port: 80
+  port: 8001
 
 ingress:
   enabled: false
@@ -84,8 +84,12 @@ affinity: {}
 # Dapr specific configurations
 dapr:
   enabled: true
-  appId: "todo-frontend"
-  appPort: 3000
+  appId: "todo-chatbot"
+  appPort: 8001
   appProtocol: "http"
   config: "dapr-config"
   logLevel: "info"
+  enableProfiling: false
+  profilingPort: 7777
+  maxConcurrency: -1
+  enableApiLogging: false
